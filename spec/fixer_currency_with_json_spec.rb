@@ -5,8 +5,7 @@ require 'money/bank/fixer_currency'
 
 describe Money::Bank::FixerCurrency do
   before :each do
-    @bank = Money::Bank::FixerCurrency.new
-    @bank.access_key = '123'
+    @bank = Money::Bank::FixerCurrency.new('123')
   end
 
   context 'given ttl_in_seconds' do

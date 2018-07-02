@@ -21,7 +21,6 @@ doc
 Gemfile.lock
 .bundle
 vendor/ruby
-CHANGELOG.md
 
 ## PROJECT::SPECIFIC
 .rbenv-version
