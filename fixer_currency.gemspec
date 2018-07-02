@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'fixer_currency'
-  s.version     = '3.4.1'
+  s.version     = '3.4.2'
   s.platform    = Gem::Platform::RUBY
   s.authors     = ['Emily Wilson']
   s.email       = ['emilywilson@privy.com']
