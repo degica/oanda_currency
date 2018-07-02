@@ -4,25 +4,22 @@ require 'open-uri'
 
 class Money
   module Bank
-    # Raised when there is an unexpected error in extracting exchange rates
-    # from Google Finance Calculator
-    class GoogleCurrencyFetchError < Error
-    end
-    # Raised when there is a captcha form request in extracting exchange rates
-    # from Google Finance Calculator
-    class GoogleCurrencyCaptchaError < Error
+    # # Raised when there is an unexpected error in extracting exchange rates
+    # # from fixer.io
+    class FixerCurrencyFetchError < Error
     end
 
-    class GoogleCurrency < Money::Bank::VariableExchange
-
-
-      SERVICE_HOST = "finance.google.com"
-      SERVICE_PATH = "/bctzjpnsun/converter"
-
+    # VariableExchange bank that handles fetching exchange rates from fixer.io
+    # and storing them in the in memory rates store.
+    class FixerCurrency < Money::Bank::VariableExchange
+      SERVICE_HOST = 'data.fixer.io'.freeze
+      SERVICE_PATH = '/api/latest'.freeze
 
       # @return [Hash] Stores the currently known rates.
       attr_reader :rates
 
+      # @return [String] Access key from fixer.io allowing access to API
+      attr_accessor :access_key
 
       class << self
         # @return [Integer] Returns the Time To Live (TTL) in seconds.
@@ -49,9 +46,10 @@ class Money
         end
       end
 
-      def initialize(*)
-        super
+      def initialize(access_key)
+        super()
         @store.extend Money::RatesStore::RateRemovalSupport
+        @access_key = access_key
       end
 
       ##
@@ -60,7 +58,7 @@ class Money
       # @return [Hash] The empty @rates Hash.
       #
       # @example
-      #   @bank = GoogleCurrency.new  #=> <Money::Bank::GoogleCurrency...>
+      #   @bank = FixerCurrency.new  #=> <Money::Bank::FixerCurrency...>
       #   @bank.get_rate(:USD, :EUR)  #=> 0.776337241
       #   @bank.flush_rates           #=> {}
       def flush_rates
@@ -78,7 +76,7 @@ class Money
       # @return [Float] The flushed rate.
       #
       # @example
-      #   @bank = GoogleCurrency.new    #=> <Money::Bank::GoogleCurrency...>
+      #   @bank = FixerCurrency.new    #=> <Money::Bank::FixerCurrency...>
       #   @bank.get_rate(:USD, :EUR)    #=> 0.776337241
       #   @bank.flush_rate(:USD, :EUR)  #=> 0.776337241
       def flush_rate(from, to)
@@ -96,11 +94,18 @@ class Money
       # @return [Float] The requested rate.
       #
       # @example
-      #   @bank = GoogleCurrency.new  #=> <Money::Bank::GoogleCurrency...>
+      #   @bank = FixerCurrency.new  #=> <Money::Bank::FixerCurrency...>
       #   @bank.get_rate(:USD, :EUR)  #=> 0.776337241
       def get_rate(from, to)
         expire_rates
-        store.get_rate(from, to) || store.add_rate(from, to, fetch_rate(from, to))
+
+        fetch_rates if !store.get_rate(from, :EUR) || !store.get_rate(to, :EUR)
+
+        begin
+          return store.get_rate(from, :EUR) / store.get_rate(to, :EUR)
+        rescue
+          raise UnknownRate
+        end
       end
 
       ##
@@ -120,59 +125,37 @@ class Money
       private
 
       ##
-      # Queries for the requested rate and returns it.
-      #
-      # @param [String, Symbol, Currency] from Currency to convert from
-      # @param [String, Symbol, Currency] to Currency to convert to
-      #
-      # @return [BigDecimal] The requested rate.
-      def fetch_rate(from, to)
-
-        from, to = Currency.wrap(from), Currency.wrap(to)
-
-        data = build_uri(from, to).read
-        rate = extract_rate(data);
-
-        if (rate < 0.1)
-          rate = 1/extract_rate(build_uri(to, from).read)
-        end
-
-        rate
-
+      # Makes an api call to populate all of the exchange rates in the in
+      # memory store.
+      def fetch_rates
+        data = build_uri.read
+        extract_rates(data)
       end
 
       ##
       # Build a URI for the given arguments.
       #
-      # @param [Currency] from The currency to convert from.
-      # @param [Currency] to The currency to convert to.
-      #
       # @return [URI::HTTP]
-      def build_uri(from, to)
-        uri = URI::HTTP.build(
-          :host  => SERVICE_HOST,
-          :path  => SERVICE_PATH,
-          :query => "a=1&from=#{from.iso_code}&to=#{to.iso_code}"
+      def build_uri
+        URI::HTTP.build(
+          host: SERVICE_HOST,
+          path: SERVICE_PATH,
+          query: "access_key=#{access_key}"
         )
       end
 
       ##
-      # Takes the response from Google and extract the rate.
+      # Takes the response from fixer.io and extract the rates and adds them to
+      # the rates store.
       #
-      # @param [String] data The google rate string to decode.
-      #
-      # @return [BigDecimal]
-      def extract_rate(data)
-        case data
-        when /<span class=bld>(\d+\.?\d*) [A-Z]{3}<\/span>/
-          BigDecimal($1)
-        when /Could not convert\./
-          raise UnknownRate
-        when /captcha-form/
-          raise GoogleCurrencyCaptchaError
-        else
-          raise GoogleCurrencyFetchError
+      # @param [String] data The hash of rates from fixer to decode.
+      def extract_rates(data)
+        rates = JSON.parse(data)['rates']
+        rates.each do |currency, rate|
+          store.add_rate(currency, :EUR, 1 / rate)
         end
+      rescue
+        raise FixerCurrencyFetchError
       end
     end
   end
