@@ -19,8 +19,9 @@ require 'money/bank/fixer_currency'
 # by default, they never expire
 Money::Bank::FixerCurrency.ttl_in_seconds = 86400
 
-# set default bank to instance of FixerCurrency
-Money.default_bank = Money::Bank::FixerCurrency.new
+# set default bank to instance of FixerCurrency with access key parameter
+# being your access_key from fixer.io
+Money.default_bank = Money::Bank::FixerCurrency.new('your_access_key')
 
 # create a new money object, and use the standard #exchange_to method
 money = Money.new(1_00, "USD") # amount is in cents
