@@ -6,6 +6,16 @@ and gives you access to the current fixer.io exchange rates.
 This gem was forked from the [Money::Bank::GoogleCurrency](http://rubymoney.github.com/google_currency)
 gem.
 
+Installation
+-----
+If the money gem is not already installed:
+
+```gem install money```
+
+Install the fixer_currency gem:
+
+```gem install fixer_currency```
+
 Usage
 -----
 
