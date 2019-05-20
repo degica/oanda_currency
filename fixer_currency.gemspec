@@ -17,8 +17,8 @@ Gem::Specification.new do |s|
   s.add_dependency 'money', '~> 6.7'
 
   s.files =  Dir.glob('{lib,spec}/**/*')
-  s.files += %w[(LICENSE README.md CHANGELOG.md AUTHORS)]
-  s.files += %w[(Rakefile .gemtest fixer_currency.gemspec)]
+  s.files += %w[LICENSE README.md CHANGELOG.md AUTHORS]
+  s.files += %w[Rakefile .gemtest fixer_currency.gemspec]
 
   s.require_path = 'lib'
 end
