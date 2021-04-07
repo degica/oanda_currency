@@ -5,7 +5,7 @@ require 'money/bank/fixer_currency'
 
 describe Money::Bank::FixerCurrency do
   before :each do
-    @bank = Money::Bank::FixerCurrency.new('123')
+    @bank = Money::Bank::FixerCurrency.new(Money::RatesStore::Memory.new, '123')
   end
 
   context 'given ttl_in_seconds' do
@@ -48,12 +48,14 @@ describe Money::Bank::FixerCurrency do
         @bank.flush_rates
         allow(@bank).to receive(:fetch_rates) do
           @bank.store.add_rate(:EUR, :EUR, 1.0)
+          @bank.store.add_rate(:EUR, :CNY, 7.77)
+          @bank.store.add_rate(:CNY, :EUR, 7.77)
         end
       end
 
       it 'should call #fetch_rates' do
         expect(@bank).to receive(:fetch_rates).once
-        @bank.get_rate(:EUR, :EUR)
+        @bank.get_rate(:EUR, :CNY)
       end
 
       it 'should store the rate for faster retreival' do

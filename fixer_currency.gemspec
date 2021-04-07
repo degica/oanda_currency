@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'rspec', '>= 3.0.0'
   s.add_development_dependency 'yard', '>= 0.5.8'
 
-  s.add_dependency 'money', '~> 6.7'
+  s.add_dependency 'money', '6.13.1'
 
   s.files =  Dir.glob('{lib,spec}/**/*')
   s.files += %w[LICENSE README.md CHANGELOG.md AUTHORS]

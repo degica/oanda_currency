@@ -46,8 +46,8 @@ class Money
         end
       end
 
-      def initialize(access_key)
-        super()
+      def initialize(st, access_key)
+        super(st)
         @store.extend Money::RatesStore::RateRemovalSupport
         @access_key = access_key
       end
