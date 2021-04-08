@@ -152,7 +152,7 @@ class Money
       def extract_rates(data)
         rates = JSON.parse(data)['rates']
         rates.each do |currency, rate|
-          store.add_rate(currency, :EUR, 1 / BigDecimal(rate.to_s))
+          store.add_rate(currency, 'EUR', 1 / BigDecimal(rate.to_s))
         end
       rescue
         raise FixerCurrencyFetchError
