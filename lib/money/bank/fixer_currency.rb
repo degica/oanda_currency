@@ -99,10 +99,10 @@ class Money
       def get_rate(from, to)
         expire_rates
 
-        fetch_rates if !store.get_rate(from, :EUR) || !store.get_rate(to, :EUR)
+        fetch_rates if !store.get_rate(from.iso_code, 'EUR') || !store.get_rate(to.iso_code, 'EUR')
 
         begin
-          return store.get_rate(from, :EUR) / store.get_rate(to, :EUR)
+          return store.get_rate(from.iso_code, 'EUR') / store.get_rate(to.iso_code, 'EUR')
         rescue
           raise UnknownRate
         end
