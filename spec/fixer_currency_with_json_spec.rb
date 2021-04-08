@@ -5,7 +5,11 @@ require 'money/bank/fixer_currency'
 
 describe Money::Bank::FixerCurrency do
   before :each do
-    @bank = Money::Bank::FixerCurrency.new(Money::RatesStore::Memory.new, '123')
+    @bank = Money::Bank::FixerCurrency.new(
+      Money::RatesStore::Memory.new,
+      '123',
+      ['EUR', 'CNY', 'USD', 'JPY']
+      )
   end
 
   context 'given ttl_in_seconds' do
@@ -36,37 +40,37 @@ describe Money::Bank::FixerCurrency do
 
     it 'should try to expire the rates' do
       expect(@bank).to receive(:expire_rates).once
-      @bank.get_rate(:EUR, :EUR)
+      @bank.get_rate(Money::Currency.wrap(:EUR), Money::Currency.wrap(:EUR))
     end
 
     it 'should return the correct rate' do
-      expect(@bank.get_rate(:EUR, :EUR)).to eq(1.0)
+      expect(@bank.get_rate(Money::Currency.wrap(:EUR), Money::Currency.wrap(:EUR))).to eq(1.0)
     end
 
     context 'when rate is unknown' do
       before(:each) do
         @bank.flush_rates
         allow(@bank).to receive(:fetch_rates) do
-          @bank.store.add_rate(:EUR, :EUR, 1.0)
-          @bank.store.add_rate(:EUR, :CNY, 7.77)
-          @bank.store.add_rate(:CNY, :EUR, 7.77)
+          @bank.store.add_rate(Money::Currency.wrap(:EUR), Money::Currency.wrap(:EUR), 1.0)
+          @bank.store.add_rate(Money::Currency.wrap(:EUR), Money::Currency.wrap(:CNY), 7.77)
+          @bank.store.add_rate(Money::Currency.wrap(:CNY), Money::Currency.wrap(:EUR), 7.77)
         end
       end
 
       it 'should call #fetch_rates' do
         expect(@bank).to receive(:fetch_rates).once
-        @bank.get_rate(:EUR, :CNY)
+        @bank.get_rate(Money::Currency.wrap(:EUR), Money::Currency.wrap(:CNY))
       end
 
       it 'should store the rate for faster retreival' do
-        @bank.get_rate(:EUR, :EUR)
+        @bank.get_rate(Money::Currency.wrap(:EUR), Money::Currency.wrap(:EUR))
         expect(@bank.store.instance_variable_get('@index'))
           .to include('EUR_TO_EUR')
       end
 
       context 'when exhange rate is not found' do
         it 'should raise UnknownRate error' do
-          expect { @bank.get_rate('VND', :USD) }
+          expect { @bank.get_rate(Money::Currency.wrap('VND'), Money::Currency.wrap(:USD)) }
             .to raise_error(Money::Bank::UnknownRate)
         end
       end
@@ -75,18 +79,18 @@ describe Money::Bank::FixerCurrency do
     context 'when rate is known' do
       it 'should not use #fetch_rates' do
         expect(@bank).to_not receive(:fetch_rates)
-        @bank.get_rate(:EUR, :EUR)
+        @bank.get_rate(Money::Currency.wrap(:EUR), Money::Currency.wrap(:EUR))
       end
     end
   end
 
   describe '#flush_rates' do
     before(:each) do
-      @bank.store.add_rate(:EUR, :EUR, 1.0)
+      @bank.store.add_rate(Money::Currency.wrap(:EUR), Money::Currency.wrap(:EUR), 1.0)
     end
 
     it 'should empty @rates' do
-      @bank.get_rate(:EUR, :EUR)
+      @bank.get_rate(Money::Currency.wrap(:EUR), Money::Currency.wrap(:EUR))
       @bank.flush_rates
       expect(@bank.store.instance_variable_get('@index')).to eq({})
     end
@@ -95,14 +99,14 @@ describe Money::Bank::FixerCurrency do
   describe '#flush_rate' do
     before(:each) do
       allow(@bank).to(receive(:fetch_rates).once) do
-        @bank.store.add_rate('JPY', :EUR, 107)
-        @bank.store.add_rate(:USD, :EUR, 1.2)
+        @bank.store.add_rate(Money::Currency.wrap('JPY'), Money::Currency.wrap(:EUR), 107)
+        @bank.store.add_rate(Money::Currency.wrap(:USD), Money::Currency.wrap(:EUR), 1.2)
       end
     end
 
     it 'should remove a specific rate from @rates' do
-      @bank.get_rate(:USD, :JPY)
-      @bank.flush_rate(:USD, :EUR)
+      @bank.get_rate(Money::Currency.wrap(:USD), Money::Currency.wrap(:JPY))
+      @bank.flush_rate(Money::Currency.wrap(:USD), Money::Currency.wrap(:EUR))
       expect(@bank.store.instance_variable_get('@index'))
         .to include('JPY_TO_EUR')
       expect(@bank.store.instance_variable_get('@index'))
