@@ -46,10 +46,11 @@ class Money
         end
       end
 
-      def initialize(st, access_key)
+      def initialize(st, access_key, white_list_currencies)
         super(st)
         @store.extend Money::RatesStore::RateRemovalSupport
         @access_key = access_key
+        @white_list_currencies = white_list_currencies
       end
 
       ##
@@ -152,7 +153,9 @@ class Money
       def extract_rates(data)
         rates = JSON.parse(data)['rates']
         rates.each do |currency, rate|
-          store.add_rate(currency, 'EUR', 1 / BigDecimal(rate.to_s))
+          if @white_list_currencies.include?(currency)
+            store.add_rate(currency, 'EUR', 1 / BigDecimal(rate.to_s))
+          end
         end
       rescue
         raise FixerCurrencyFetchError
