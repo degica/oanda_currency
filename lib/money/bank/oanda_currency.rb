@@ -102,10 +102,10 @@ class Money
       def get_rate(from, to)
         expire_rates
 
-        fetch_rates(from, to) if !store.get_rate(from.iso_code, 'EUR') || !store.get_rate(to.iso_code, 'EUR')
+        fetch_rates(from.iso_code, to.iso_code) if !store.get_rate(from.iso_code, to.iso_code)
 
         begin
-          store.get_rate(from.iso_code, 'EUR') / store.get_rate(to.iso_code, 'EUR')
+          store.get_rate(from.iso_code, to.iso_code)
         rescue StandardError
           raise UnknownRate
         end
@@ -140,7 +140,7 @@ class Money
       #
       # @return [URI::HTTP]
       def build_uri(base, quote)
-        URI::HTTP.build(
+        URI::HTTPS.build(
           host: SERVICE_HOST,
           path: SERVICE_PATH,
           query: [
@@ -148,7 +148,7 @@ class Money
             "quote=#{quote}",
             "date_time=#{(Time.now.utc - 86_400).strftime('%Y-%m-%d')}",
             'data_set=MUFG',
-            "access_key=#{access_key}"
+            "api_key=#{access_key}"
           ].join('&')
         )
       end
@@ -159,15 +159,19 @@ class Money
       #
       # @param [String] data The hash of rates from Oanda to decode.
       def extract_rates(data)
-        rates = JSON.parse(data).fetch(:quotes)
+        rates = JSON.parse(data).fetch('quotes')
         rates.each do |rate|
-          currency = rate.fetch(:base_currency)
-          next unless @white_list_currencies.include?(currency)
+          from_currency = rate.fetch('base_currency')
+          to_currency = rate.fetch('quote_currency')
+          unless @white_list_currencies.include?(from_currency) &&
+                   @white_list_currencies.include?(from_currency)
+            next
+          end
 
           store.add_rate(
-            currency,
-            'EUR',
-            1 / BigDecimal(rate.fetch(:average_midpoint))
+            from_currency,
+            to_currency,
+            BigDecimal(rate.fetch('average_midpoint'))
           )
         end
       rescue StandardError
