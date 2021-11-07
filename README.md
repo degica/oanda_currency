@@ -1,7 +1,7 @@
-Fixer Currency
+Oanda Currency
 ===============
-This gem extends Money::Bank::VariableExchange with Money::Bank::FixerCurrency
-and gives you access to the current fixer.io exchange rates.
+This gem extends Money::Bank::VariableExchange with Money::Bank::OandaCurrency
+and gives you access to the current Oanda exchange rates.
 
 This gem was forked from the [Money::Bank::GoogleCurrency](http://rubymoney.github.com/google_currency)
 gem.
@@ -12,9 +12,9 @@ If the money gem is not already installed:
 
 ```gem install money```
 
-Install the fixer_currency gem:
+Install the Oanda_currency gem:
 
-```gem install fixer_currency```
+```gem install Oanda_currency```
 
 Usage
 -----
@@ -22,16 +22,21 @@ Usage
 ```ruby
 
 require 'money'
-require 'money/bank/fixer_currency'
+require 'money/bank/oanda_currency'
 
 # (optional)
 # set the seconds after than the current rates are automatically expired
 # by default, they never expire
-Money::Bank::FixerCurrency.ttl_in_seconds = 86400
+Money::Bank::OandaCurrency.ttl_in_seconds = 86400
 
-# set default bank to instance of FixerCurrency with access key parameter
-# being your access_key from fixer.io
-Money.default_bank = Money::Bank::FixerCurrency.new('your_access_key')
+# set default bank to instance of OandaCurrency with access key parameter
+# being your access_key from Oanda
+Money.default_bank =
+  Money::Bank::OandaCurrency.new(
+  	rate_store,
+  	'your_access_key',
+  	currencies_supported
+  )
 
 # create a new money object, and use the standard #exchange_to method
 money = Money.new(1_00, "USD") # amount is in cents
@@ -45,15 +50,15 @@ money.exchange_to(:EUR)
 ```
 
 An `UnknownRate` will be thrown if `#exchange_to` is called with a `Currency`
-that `Money` knows, but fixer.io does not.
+that `Money` knows, but Oanda does not.
 
 An `UnknownCurrency` will be thrown if `#exchange_to` is called with a
 `Currency` that `Money` does not know.
 
-A `FixerCurrencyFetchError` will be thrown if there is an unknown issue with
-parsing the response including rates from fixer.io's API.
+A `OandaCurrencyFetchError` will be thrown if there is an unknown issue with
+parsing the response including rates from Oanda's API.
 
 Caveats
 -------
 
-This gem uses [fixer.io](https://fixer.io/) under the hood.
+This gem uses [Oanda](https://www.oanda.com/) under the hood.

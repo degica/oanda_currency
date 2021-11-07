@@ -5,7 +5,7 @@ CLOBBER.include('.yardoc', 'doc')
 
 def gemspec
   @gemspec ||= begin
-    file = File.expand_path("../fixer_currency.gemspec", __FILE__)
+    file = File.expand_path("../oanda_currency.gemspec", __FILE__)
     eval(File.read(file), binding, file)
   end
 end

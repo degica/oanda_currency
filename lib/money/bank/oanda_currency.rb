@@ -7,20 +7,20 @@ require 'open-uri'
 class Money
   module Bank
     # # Raised when there is an unexpected error in extracting exchange rates
-    # # from fixer.io
-    class FixerCurrencyFetchError < Error
+    # # from Oanda
+    class OandaCurrencyFetchError < Error
     end
 
-    # VariableExchange bank that handles fetching exchange rates from fixer.io
+    # VariableExchange bank that handles fetching exchange rates from Oanda
     # and storing them in the in memory rates store.
-    class FixerCurrency < Money::Bank::VariableExchange
+    class OandaCurrency < Money::Bank::VariableExchange
       SERVICE_HOST = 'web-services.oanda.com'
       SERVICE_PATH = '/rates/api/v2/rates/candle.json'
 
       # @return [Hash] Stores the currently known rates.
       attr_reader :rates
 
-      # @return [String] Access key from fixer.io allowing access to API
+      # @return [String] Access key from Oanda allowing access to API
       attr_accessor :access_key
 
       class << self
@@ -61,7 +61,7 @@ class Money
       # @return [Hash] The empty @rates Hash.
       #
       # @example
-      #   @bank = FixerCurrency.new  #=> <Money::Bank::FixerCurrency...>
+      #   @bank = OandaCurrency.new  #=> <Money::Bank::OandaCurrency...>
       #   @bank.get_rate(:USD, :EUR)  #=> 0.776337241
       #   @bank.flush_rates           #=> {}
       def flush_rates
@@ -79,7 +79,7 @@ class Money
       # @return [Float] The flushed rate.
       #
       # @example
-      #   @bank = FixerCurrency.new    #=> <Money::Bank::FixerCurrency...>
+      #   @bank = OandaCurrency.new    #=> <Money::Bank::OandaCurrency...>
       #   @bank.get_rate(:USD, :EUR)    #=> 0.776337241
       #   @bank.flush_rate(:USD, :EUR)  #=> 0.776337241
       def flush_rate(from, to)
@@ -97,7 +97,7 @@ class Money
       # @return [Float] The requested rate.
       #
       # @example
-      #   @bank = FixerCurrency.new  #=> <Money::Bank::FixerCurrency...>
+      #   @bank = OandaCurrency.new  #=> <Money::Bank::OandaCurrency...>
       #   @bank.get_rate(:USD, :EUR)  #=> 0.776337241
       def get_rate(from, to)
         expire_rates
@@ -154,10 +154,10 @@ class Money
       end
 
       ##
-      # Takes the response from fixer.io and extract the rates and adds them to
+      # Takes the response from Oanda and extract the rates and adds them to
       # the rates store.
       #
-      # @param [String] data The hash of rates from fixer to decode.
+      # @param [String] data The hash of rates from Oanda to decode.
       def extract_rates(data)
         rates = JSON.parse(data).fetch(:quotes)
         rates.each do |rate|
@@ -171,7 +171,7 @@ class Money
           )
         end
       rescue StandardError
-        raise FixerCurrencyFetchError
+        raise OandaCurrencyFetchError
       end
     end
   end

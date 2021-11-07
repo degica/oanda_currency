@@ -1,11 +1,11 @@
 require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
 
 require 'money'
-require 'money/bank/fixer_currency'
+require 'money/bank/oanda_currency'
 
-describe Money::Bank::FixerCurrency do
+describe Money::Bank::OandaCurrency do
   before :each do
-    @bank = Money::Bank::FixerCurrency.new(
+    @bank = Money::Bank::OandaCurrency.new(
       Money::RatesStore::Memory.new,
       '123',
       ['EUR', 'CNY', 'USD', 'JPY']
@@ -14,19 +14,19 @@ describe Money::Bank::FixerCurrency do
 
   context 'given ttl_in_seconds' do
     before(:each) do
-      Money::Bank::FixerCurrency.ttl_in_seconds = 86_400
+      Money::Bank::OandaCurrency.ttl_in_seconds = 86_400
     end
 
     it 'should accept a ttl_in_seconds option' do
-      expect(Money::Bank::FixerCurrency.ttl_in_seconds).to eq(86_400)
+      expect(Money::Bank::OandaCurrency.ttl_in_seconds).to eq(86_400)
     end
 
     describe '.refresh_rates_expiration!' do
       it 'set the #rates_expiration using the TTL and the current time' do
         new_time = Time.now
         Timecop.freeze(new_time)
-        Money::Bank::FixerCurrency.refresh_rates_expiration!
-        expect(Money::Bank::FixerCurrency.rates_expiration)
+        Money::Bank::OandaCurrency.refresh_rates_expiration!
+        expect(Money::Bank::OandaCurrency.rates_expiration)
           .to eq(new_time + 86_400)
       end
     end
@@ -116,7 +116,7 @@ describe Money::Bank::FixerCurrency do
 
   describe '#expire_rates' do
     before do
-      Money::Bank::FixerCurrency.ttl_in_seconds = 1000
+      Money::Bank::OandaCurrency.ttl_in_seconds = 1000
     end
 
     context 'when the ttl has expired' do
@@ -134,7 +134,7 @@ describe Money::Bank::FixerCurrency do
         exp_time = Time.now + 1000
 
         @bank.expire_rates
-        expect(Money::Bank::FixerCurrency.rates_expiration).to eq(exp_time)
+        expect(Money::Bank::OandaCurrency.rates_expiration).to eq(exp_time)
       end
     end
 
