@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'money'
 require 'money/rates_store/rate_removal_support'
 require 'open-uri'
@@ -12,8 +14,8 @@ class Money
     # VariableExchange bank that handles fetching exchange rates from fixer.io
     # and storing them in the in memory rates store.
     class FixerCurrency < Money::Bank::VariableExchange
-      SERVICE_HOST = 'data.fixer.io'.freeze
-      SERVICE_PATH = '/api/latest'.freeze
+      SERVICE_HOST = 'web-services.oanda.com'
+      SERVICE_PATH = '/rates/api/v2/rates/candle.json'
 
       # @return [Hash] Stores the currently known rates.
       attr_reader :rates
@@ -100,11 +102,11 @@ class Money
       def get_rate(from, to)
         expire_rates
 
-        fetch_rates if !store.get_rate(from.iso_code, 'EUR') || !store.get_rate(to.iso_code, 'EUR')
+        fetch_rates(from, to) if !store.get_rate(from.iso_code, 'EUR') || !store.get_rate(to.iso_code, 'EUR')
 
         begin
-          return store.get_rate(from.iso_code, 'EUR') / store.get_rate(to.iso_code, 'EUR')
-        rescue
+          store.get_rate(from.iso_code, 'EUR') / store.get_rate(to.iso_code, 'EUR')
+        rescue StandardError
           raise UnknownRate
         end
       end
@@ -128,8 +130,8 @@ class Money
       ##
       # Makes an api call to populate all of the exchange rates in the in
       # memory store.
-      def fetch_rates
-        data = build_uri.read
+      def fetch_rates(base, quote)
+        data = build_uri(base, quote).read
         extract_rates(data)
       end
 
@@ -137,11 +139,17 @@ class Money
       # Build a URI for the given arguments.
       #
       # @return [URI::HTTP]
-      def build_uri
+      def build_uri(base, quote)
         URI::HTTP.build(
           host: SERVICE_HOST,
           path: SERVICE_PATH,
-          query: "access_key=#{access_key}"
+          query: [
+            "base=#{base}",
+            "quote=#{quote}",
+            "date_time=#{(Time.now.utc - 86_400).strftime('%Y-%m-%d')}",
+            'data_set=MUFG',
+            "access_key=#{access_key}"
+          ].join('&')
         )
       end
 
@@ -151,13 +159,18 @@ class Money
       #
       # @param [String] data The hash of rates from fixer to decode.
       def extract_rates(data)
-        rates = JSON.parse(data)['rates']
-        rates.each do |currency, rate|
-          if @white_list_currencies.include?(currency)
-            store.add_rate(currency, 'EUR', 1 / BigDecimal(rate.to_s))
-          end
+        rates = JSON.parse(data).fetch(:quotes)
+        rates.each do |rate|
+          currency = rate.fetch(:base_currency)
+          next unless @white_list_currencies.include?(currency)
+
+          store.add_rate(
+            currency,
+            'EUR',
+            1 / BigDecimal(rate.fetch(:average_midpoint))
+          )
         end
-      rescue
+      rescue StandardError
         raise FixerCurrencyFetchError
       end
     end
