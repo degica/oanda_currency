@@ -70,7 +70,7 @@ describe Money::Bank::OandaCurrency do
 
       context 'when exhange rate is not found' do
         it 'should raise UnknownRate error' do
-          expect { @bank.get_rate(Money::Currency.wrap('VND'), Money::Currency.wrap(:USD)) }
+          expect { @bank.get_rate(Money::Currency.wrap(:VND), Money::Currency.wrap(:USD)) }
             .to raise_error(Money::Bank::UnknownRate)
         end
       end
@@ -99,18 +99,18 @@ describe Money::Bank::OandaCurrency do
   describe '#flush_rate' do
     before(:each) do
       allow(@bank).to(receive(:fetch_rates).once) do
-        @bank.store.add_rate(Money::Currency.wrap('JPY'), Money::Currency.wrap(:EUR), 107)
-        @bank.store.add_rate(Money::Currency.wrap(:USD), Money::Currency.wrap(:EUR), 1.2)
+        @bank.store.add_rate(Money::Currency.wrap(:JPY), Money::Currency.wrap(:USD), 107)
+        @bank.store.add_rate(Money::Currency.wrap(:USD), Money::Currency.wrap(:JPY), 1.2)
       end
     end
 
     it 'should remove a specific rate from @rates' do
-      @bank.get_rate(Money::Currency.wrap(:USD), Money::Currency.wrap(:JPY))
-      @bank.flush_rate(Money::Currency.wrap(:USD), Money::Currency.wrap(:EUR))
+      @bank.get_rate(Money::Currency.wrap(:JPY), Money::Currency.wrap(:USD))
+      @bank.flush_rate(Money::Currency.wrap(:USD), Money::Currency.wrap(:JPY))
       expect(@bank.store.instance_variable_get('@index'))
-        .to include('JPY_TO_EUR')
+        .to include('JPY_TO_USD')
       expect(@bank.store.instance_variable_get('@index'))
-        .to_not include('USD_TO_EUR')
+        .to_not include('USD_TO_JPY')
     end
   end
 
@@ -143,6 +143,19 @@ describe Money::Bank::OandaCurrency do
         expect(@bank).to_not receive(:flush_rates)
         @bank.expire_rates
       end
+    end
+  end
+
+  describe 'private#build_uri' do
+    it 'uses MUFG data set' do
+      expect(@bank.send(:build_uri, 'JPY', 'EUR').query.split('&')).to(
+        include('data_set=MUFG'))
+    end
+
+    it 'grabs previous day rate info' do
+      Timecop.freeze(Time.now.utc)
+      expect(@bank.send(:build_uri, 'JPY', 'EUR').query.split('&')).to(
+        include("date_time=#{(Time.now - 86_400).strftime('%Y-%m-%d')}"))
     end
   end
 end

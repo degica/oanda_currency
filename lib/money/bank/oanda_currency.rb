@@ -103,9 +103,10 @@ class Money
         expire_rates
 
         fetch_rates(from.iso_code, to.iso_code) if !store.get_rate(from.iso_code, to.iso_code)
-
         begin
-          store.get_rate(from.iso_code, to.iso_code)
+          rate = store.get_rate(from.iso_code, to.iso_code)
+          raise unless rate
+          rate
         rescue StandardError
           raise UnknownRate
         end
@@ -163,6 +164,7 @@ class Money
         rates.each do |rate|
           from_currency = rate.fetch('base_currency')
           to_currency = rate.fetch('quote_currency')
+
           unless @white_list_currencies.include?(from_currency) &&
                    @white_list_currencies.include?(from_currency)
             next
