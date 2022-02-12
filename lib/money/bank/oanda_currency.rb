@@ -185,7 +185,7 @@ class Money
           )
         end
       rescue StandardError
-        raise OandaCurrencyFetchError
+        raise OandaCurrencyFetchError, 'Error parsing rates or adding rates to store'
       end
 
       # OANDA API docs: https://developer.oanda.com/exchange-rates-api/#cmp--responses
@@ -204,8 +204,9 @@ class Money
           @data_set = DEFAULT_DATA_SET
           # Attempt a second API call with default data set (OANDA)
           # return a JSON response body only if successful, else will fail with OpenURI::HTTPError
-          build_uri(base, quote).read
+          response = build_uri(base, quote).read
           @data_set = current_data_set
+          response
         else
           raise OandaCurrencyFetchError, rsp_message
         end
