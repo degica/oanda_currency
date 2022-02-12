@@ -200,13 +200,16 @@ class Money
         when 400
           raise OandaCurrencyFetchError, rsp_message unless rsp_code == 1
 
+          current_data_set = @data_set
           @data_set = DEFAULT_DATA_SET
           # return a JSON response body only if successful, else will fail with OpenURI::HTTPError
           build_uri(base, quote).read
+          @data_set = current_data_set
         else
           raise OandaCurrencyFetchError, rsp_message
         end
       rescue OpenURI::HTTPError
+        @data_set = current_data_set
         raise UnknownCurrency, rsp_message
       end
     end

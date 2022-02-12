@@ -81,15 +81,22 @@ describe Money::Bank::OandaCurrency do
       before do
         failed_response = instance_double(Faraday::Response,
                                           status: 400,
-                                          body: { code: 1, message: 'Oh crap' }.to_json)
+                                          body: { code: 1, message: 'Dunno why but I still fail after falling back to OANDA' }.to_json)
         allow(Faraday).to receive(:get).and_return(failed_response)
       end
 
-      it 'should raise UnknownCurrencyError after having fallen back to default OANDA data set' do
-        expect(@bank.instance_variable_get(:@data_set)).to eq('MUFG')
+      it 'should fall back to default data set and attempt another API call' do
+        allow(@bank).to receive_message_chain(:build_uri, :read).and_return(anything)
+        @bank.store.add_rate(:VND, :USD, 0.6)
+
+        @bank.get_rate(Money::Currency.wrap(:VND), Money::Currency.wrap(:USD))
+        expect(@bank.store.instance_variable_get('@index'))
+          .to include('VND_TO_USD')
+      end
+
+      it 'should raise UnknownCurrency error when second call with default data set fails' do
         expect { @bank.get_rate(Money::Currency.wrap(:VND), Money::Currency.wrap(:USD)) }
-          .to raise_error(Money::Bank::UnknownCurrency)
-        expect(@bank.instance_variable_get(:@data_set)).to eq('OANDA')
+          .to raise_error(Money::Bank::UnknownCurrency, 'Dunno why but I still fail after falling back to OANDA')
       end
     end
 
@@ -97,7 +104,7 @@ describe Money::Bank::OandaCurrency do
       before do
         failed_response = instance_double(Faraday::Response,
                                           status: 404,
-                                          body: { code: 56, messsage: 'The rates requested have not yet been published' }.to_json)
+                                          body: { code: 56, message: 'The rates requested have not yet been published' }.to_json)
         allow(Faraday).to receive(:get).and_return(failed_response)
       end
 
