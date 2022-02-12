@@ -190,13 +190,13 @@ class Money
 
       # OANDA API docs: https://developer.oanda.com/exchange-rates-api/#cmp--responses
       def raise_or_return(response, base, quote)
+        return build_uri(base, quote).read if response.status == 200
+
         rsp_body = JSON.parse(response.body)
         rsp_code = rsp_body.fetch('code')
         rsp_message = rsp_body.fetch('message')
 
         case response.status
-        when 200
-          response.body
         when 400
           raise OandaCurrencyFetchError, rsp_message unless rsp_code == 1
 
