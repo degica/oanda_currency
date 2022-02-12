@@ -8,7 +8,8 @@ describe Money::Bank::OandaCurrency do
     @bank = Money::Bank::OandaCurrency.new(
       Money::RatesStore::Memory.new,
       '123',
-      ['EUR', 'CNY', 'USD', 'JPY']
+      ['EUR', 'CNY', 'USD', 'JPY'],
+      'MUFG'
       )
   end
 
@@ -68,11 +69,41 @@ describe Money::Bank::OandaCurrency do
           .to include('EUR_TO_EUR')
       end
 
-      context 'when exhange rate is not found' do
+      context 'when exhange rate is not found in store' do
         it 'should raise UnknownRate error' do
           expect { @bank.get_rate(Money::Currency.wrap(:VND), Money::Currency.wrap(:USD)) }
             .to raise_error(Money::Bank::UnknownRate)
         end
+      end
+    end
+
+    context 'when the currency is not found upstream' do
+      before do
+        failed_response = instance_double(Faraday::Response,
+                                          status: 400,
+                                          body: { code: 1, messsage: 'Oh crap' }.to_json)
+        allow(Faraday).to receive(:get).and_return(failed_response)
+      end
+
+      it 'should raise UnknownCurrencyError after having fallen back to default OANDA data set' do
+        expect(@bank.instance_variable_get(:@data_set)).to eq('MUFG')
+        expect { @bank.get_rate(Money::Currency.wrap(:VND), Money::Currency.wrap(:USD)) }
+          .to raise_error(Money::Bank::UnknownCurrency)
+        expect(@bank.instance_variable_get(:@data_set)).to eq('OANDA')
+      end
+    end
+
+    context 'when there are other errors fetching from OANDA' do
+      before do
+        failed_response = instance_double(Faraday::Response,
+                                          status: 404,
+                                          body: { code: 56, messsage: 'The rates requested have not yet been published' }.to_json)
+        allow(Faraday).to receive(:get).and_return(failed_response)
+      end
+
+      it 'should raise OandaCurrencyFetchError with an error message' do
+        expect { @bank.get_rate(Money::Currency.wrap(:MYR), Money::Currency.wrap(:USD)) }
+          .to raise_error(Money::Bank::OandaCurrencyFetchError, 'The rates requested have not yet been published')
       end
     end
 

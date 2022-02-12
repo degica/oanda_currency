@@ -11,9 +11,11 @@ Gem::Specification.new do |s|
   s.license     = 'MIT'
 
   s.add_development_dependency 'ffi'
+  s.add_development_dependency 'pry-byebug'
   s.add_development_dependency 'rspec', '>= 3.0.0'
   s.add_development_dependency 'yard', '>= 0.5.8'
 
+  s.add_dependency 'faraday'
   s.add_dependency 'money', '6.13.1'
 
   s.files =  Dir.glob('{lib,spec}/**/*')
