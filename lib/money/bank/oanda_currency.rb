@@ -109,6 +109,7 @@ class Money
         begin
           rate = store.get_rate(from.iso_code, to.iso_code)
           raise unless rate
+
           rate
         rescue StandardError
           raise UnknownRate
@@ -191,7 +192,7 @@ class Money
       def raise_or_return(response, base, quote)
         rsp_body = JSON.parse(response.body)
         rsp_code = rsp_body.fetch('code')
-        rsp_message = rsp_body.fetch('messsage')
+        rsp_message = rsp_body.fetch('message')
 
         case response.status
         when 200

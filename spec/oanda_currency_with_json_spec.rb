@@ -81,7 +81,7 @@ describe Money::Bank::OandaCurrency do
       before do
         failed_response = instance_double(Faraday::Response,
                                           status: 400,
-                                          body: { code: 1, messsage: 'Oh crap' }.to_json)
+                                          body: { code: 1, message: 'Oh crap' }.to_json)
         allow(Faraday).to receive(:get).and_return(failed_response)
       end
 
