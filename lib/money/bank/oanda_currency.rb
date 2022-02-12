@@ -202,6 +202,7 @@ class Money
 
           current_data_set = @data_set
           @data_set = DEFAULT_DATA_SET
+          # Attempt a second API call with default data set (OANDA)
           # return a JSON response body only if successful, else will fail with OpenURI::HTTPError
           build_uri(base, quote).read
           @data_set = current_data_set
