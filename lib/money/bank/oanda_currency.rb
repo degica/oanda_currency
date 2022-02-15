@@ -139,7 +139,7 @@ class Money
       # Using Faraday to capture responses with error messages from the api,
       # instead of generic OpenURI::HTTPError 400 Bad Request from [URI::HTTP]#read
       def fetch_rates(base, quote)
-        response = Faraday.get(build_uri(base, quote).to_s)
+        response = Faraday.get(build_uri(base, quote, @data_set).to_s)
         data = raise_or_return(response, base, quote)
         extract_rates(data)
       end
@@ -148,7 +148,7 @@ class Money
       # Build a URI for the given arguments.
       #
       # @return [URI::HTTP]
-      def build_uri(base, quote)
+      def build_uri(base, quote, data_set)
         URI::HTTPS.build(
           host: SERVICE_HOST,
           path: SERVICE_PATH,
@@ -156,7 +156,7 @@ class Money
             "base=#{base}",
             "quote=#{quote}",
             "date_time=#{(Time.now.utc - 86_400).strftime('%Y-%m-%d')}",
-            "data_set=#{@data_set}",
+            "data_set=#{data_set}",
             "api_key=#{access_key}"
           ].join('&')
         )
@@ -200,18 +200,13 @@ class Money
         when 400
           raise OandaCurrencyFetchError, rsp_message unless rsp_code == 1
 
-          current_data_set = @data_set
-          @data_set = DEFAULT_DATA_SET
           # Attempt a second API call with default data set (OANDA)
           # return a JSON response body only if successful, else will fail with OpenURI::HTTPError
-          response = build_uri(base, quote).read
-          @data_set = current_data_set
-          response
+          build_uri(base, quote, DEFAULT_DATA_SET).read
         else
           raise OandaCurrencyFetchError, rsp_message
         end
       rescue OpenURI::HTTPError
-        @data_set = current_data_set
         raise UnknownCurrency, rsp_message
       end
     end
