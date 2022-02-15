@@ -87,6 +87,14 @@ describe Money::Bank::OandaCurrency do
           .to include('VND_TO_USD')
       end
 
+      it 'should not change @data_set' do
+        allow(@bank).to receive_message_chain(:build_uri, :read).and_return(anything)
+        @bank.store.add_rate(:VND, :USD, 0.6)
+
+        expect { @bank.get_rate(Money::Currency.wrap(:VND), Money::Currency.wrap(:USD)) }
+          .not_to change { @bank.instance_variable_get(:@data_set) }
+      end
+
       before do
         failed_response = instance_double(Faraday::Response,
                                           status: 400,
