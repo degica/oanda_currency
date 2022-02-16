@@ -8,7 +8,8 @@ describe Money::Bank::OandaCurrency do
     @bank = Money::Bank::OandaCurrency.new(
       Money::RatesStore::Memory.new,
       '123',
-      ['EUR', 'CNY', 'USD', 'JPY']
+      ['EUR', 'CNY', 'USD', 'JPY'],
+      'MUFG'
       )
   end
 
@@ -68,11 +69,56 @@ describe Money::Bank::OandaCurrency do
           .to include('EUR_TO_EUR')
       end
 
-      context 'when exhange rate is not found' do
+      context 'when exhange rate is not found in store' do
         it 'should raise UnknownRate error' do
           expect { @bank.get_rate(Money::Currency.wrap(:VND), Money::Currency.wrap(:USD)) }
             .to raise_error(Money::Bank::UnknownRate)
         end
+      end
+    end
+
+    context 'when the currency is not found upstream' do
+      it 'should fall back to default data set and attempt another API call' do
+        allow(@bank).to receive_message_chain(:build_uri, :read).and_return(anything)
+        @bank.store.add_rate(:VND, :USD, 0.6)
+
+        @bank.get_rate(Money::Currency.wrap(:VND), Money::Currency.wrap(:USD))
+        expect(@bank.store.instance_variable_get('@index'))
+          .to include('VND_TO_USD')
+      end
+
+      it 'should not change @data_set' do
+        allow(@bank).to receive_message_chain(:build_uri, :read).and_return(anything)
+        @bank.store.add_rate(:VND, :USD, 0.6)
+
+        expect { @bank.get_rate(Money::Currency.wrap(:VND), Money::Currency.wrap(:USD)) }
+          .not_to change { @bank.instance_variable_get(:@data_set) }
+      end
+
+      before do
+        failed_response = instance_double(Faraday::Response,
+                                          status: 400,
+                                          body: { code: 1, message: 'Dunno why but I still fail after falling back to OANDA' }.to_json)
+        allow(Faraday).to receive(:get).and_return(failed_response)
+      end
+
+      it 'should raise UnknownCurrency error when second call with default data set fails' do
+        expect { @bank.get_rate(Money::Currency.wrap(:VND), Money::Currency.wrap(:USD)) }
+          .to raise_error(Money::Bank::UnknownCurrency, 'Dunno why but I still fail after falling back to OANDA')
+      end
+    end
+
+    context 'when there are other errors fetching from OANDA' do
+      before do
+        failed_response = instance_double(Faraday::Response,
+                                          status: 404,
+                                          body: { code: 56, message: 'The rates requested have not yet been published' }.to_json)
+        allow(Faraday).to receive(:get).and_return(failed_response)
+      end
+
+      it 'should raise OandaCurrencyFetchError with an error message' do
+        expect { @bank.get_rate(Money::Currency.wrap(:MYR), Money::Currency.wrap(:USD)) }
+          .to raise_error(Money::Bank::OandaCurrencyFetchError, 'The rates requested have not yet been published')
       end
     end
 
@@ -148,13 +194,13 @@ describe Money::Bank::OandaCurrency do
 
   describe 'private#build_uri' do
     it 'uses MUFG data set' do
-      expect(@bank.send(:build_uri, 'JPY', 'EUR').query.split('&')).to(
+      expect(@bank.send(:build_uri, 'JPY', 'EUR', 'MUFG').query.split('&')).to(
         include('data_set=MUFG'))
     end
 
     it 'grabs previous day rate info' do
       Timecop.freeze(Time.now.utc)
-      expect(@bank.send(:build_uri, 'JPY', 'EUR').query.split('&')).to(
+      expect(@bank.send(:build_uri, 'JPY', 'EUR', 'MUFG').query.split('&')).to(
         include("date_time=#{(Time.now - 86_400).strftime('%Y-%m-%d')}"))
     end
   end

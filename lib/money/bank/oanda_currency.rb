@@ -3,19 +3,21 @@
 require 'money'
 require 'money/rates_store/rate_removal_support'
 require 'open-uri'
+require 'faraday'
 
 class Money
   module Bank
     # # Raised when there is an unexpected error in extracting exchange rates
     # # from Oanda
-    class OandaCurrencyFetchError < Error
-    end
+    class OandaCurrencyFetchError < Error; end
+    class UnknownCurrency < Error; end
 
     # VariableExchange bank that handles fetching exchange rates from Oanda
     # and storing them in the in memory rates store.
     class OandaCurrency < Money::Bank::VariableExchange
       SERVICE_HOST = 'web-services.oanda.com'
       SERVICE_PATH = '/rates/api/v2/rates/candle.json'
+      DEFAULT_DATA_SET = 'OANDA'
 
       # @return [Hash] Stores the currently known rates.
       attr_reader :rates
@@ -48,11 +50,12 @@ class Money
         end
       end
 
-      def initialize(st, access_key, white_list_currencies)
+      def initialize(st, access_key, white_list_currencies, data_set)
         super(st)
         @store.extend Money::RatesStore::RateRemovalSupport
         @access_key = access_key
         @white_list_currencies = white_list_currencies
+        @data_set = data_set
       end
 
       ##
@@ -102,10 +105,11 @@ class Money
       def get_rate(from, to)
         expire_rates
 
-        fetch_rates(from.iso_code, to.iso_code) if !store.get_rate(from.iso_code, to.iso_code)
+        fetch_rates(from.iso_code, to.iso_code) unless store.get_rate(from.iso_code, to.iso_code)
         begin
           rate = store.get_rate(from.iso_code, to.iso_code)
           raise unless rate
+
           rate
         rescue StandardError
           raise UnknownRate
@@ -131,8 +135,12 @@ class Money
       ##
       # Makes an api call to populate all of the exchange rates in the in
       # memory store.
+      #
+      # Using Faraday to capture responses with error messages from the api,
+      # instead of generic OpenURI::HTTPError 400 Bad Request from [URI::HTTP]#read
       def fetch_rates(base, quote)
-        data = build_uri(base, quote).read
+        response = Faraday.get(build_uri(base, quote, @data_set).to_s)
+        data = raise_or_return(response, base, quote)
         extract_rates(data)
       end
 
@@ -140,7 +148,7 @@ class Money
       # Build a URI for the given arguments.
       #
       # @return [URI::HTTP]
-      def build_uri(base, quote)
+      def build_uri(base, quote, data_set)
         URI::HTTPS.build(
           host: SERVICE_HOST,
           path: SERVICE_PATH,
@@ -148,7 +156,7 @@ class Money
             "base=#{base}",
             "quote=#{quote}",
             "date_time=#{(Time.now.utc - 86_400).strftime('%Y-%m-%d')}",
-            'data_set=MUFG',
+            "data_set=#{data_set}",
             "api_key=#{access_key}"
           ].join('&')
         )
@@ -166,7 +174,7 @@ class Money
           to_currency = rate.fetch('quote_currency')
 
           unless @white_list_currencies.include?(from_currency) &&
-                   @white_list_currencies.include?(from_currency)
+                   @white_list_currencies.include?(to_currency)
             next
           end
 
@@ -177,7 +185,29 @@ class Money
           )
         end
       rescue StandardError
-        raise OandaCurrencyFetchError
+        raise OandaCurrencyFetchError, 'Error parsing rates or adding rates to store'
+      end
+
+      # OANDA API docs: https://developer.oanda.com/exchange-rates-api/#cmp--responses
+      def raise_or_return(response, base, quote)
+        return response.body if response.status == 200
+
+        rsp_body = JSON.parse(response.body)
+        rsp_code = rsp_body.fetch('code')
+        rsp_message = rsp_body.fetch('message')
+
+        case response.status
+        when 400
+          raise OandaCurrencyFetchError, rsp_message unless rsp_code == 1
+
+          # Attempt a second API call with default data set (OANDA)
+          # return a JSON response body only if successful, else will fail with OpenURI::HTTPError
+          build_uri(base, quote, DEFAULT_DATA_SET).read
+        else
+          raise OandaCurrencyFetchError, rsp_message
+        end
+      rescue OpenURI::HTTPError
+        raise UnknownCurrency, rsp_message
       end
     end
   end
