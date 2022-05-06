@@ -16,7 +16,7 @@ class Money
     # and storing them in the in memory rates store.
     class OandaCurrency < Money::Bank::VariableExchange
       SERVICE_HOST = 'web-services.oanda.com'
-      SERVICE_PATH = '/rates/api/v2/rates/candle.json'
+      SERVICE_PATH = '/rates/api/v2/rates/spot.json'
       DEFAULT_DATA_SET = 'OANDA'
 
       # @return [Hash] Stores the currently known rates.
@@ -155,7 +155,6 @@ class Money
           query: [
             "base=#{base}",
             "quote=#{quote}",
-            "date_time=#{(Time.now.utc - 86_400).strftime('%Y-%m-%d')}",
             "data_set=#{data_set}",
             "api_key=#{access_key}"
           ].join('&')
@@ -181,7 +180,7 @@ class Money
           store.add_rate(
             from_currency,
             to_currency,
-            BigDecimal(rate.fetch('average_midpoint'))
+            BigDecimal(rate.fetch('midpoint'))
           )
         end
       rescue StandardError

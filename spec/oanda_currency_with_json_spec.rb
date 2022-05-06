@@ -197,11 +197,5 @@ describe Money::Bank::OandaCurrency do
       expect(@bank.send(:build_uri, 'JPY', 'EUR', 'MUFG').query.split('&')).to(
         include('data_set=MUFG'))
     end
-
-    it 'grabs previous day rate info' do
-      Timecop.freeze(Time.now.utc)
-      expect(@bank.send(:build_uri, 'JPY', 'EUR', 'MUFG').query.split('&')).to(
-        include("date_time=#{(Time.now - 86_400).strftime('%Y-%m-%d')}"))
-    end
   end
 end
