@@ -173,10 +173,7 @@ class Money
           from_currency = rate.fetch('base_currency')
           to_currency = rate.fetch('quote_currency')
 
-          unless @white_list_currencies.include?(from_currency) &&
-                   @white_list_currencies.include?(to_currency)
-            next
-          end
+          next unless @white_list_currencies.include?(to_currency)
 
           store.add_rate(
             from_currency,

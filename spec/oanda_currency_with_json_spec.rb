@@ -204,4 +204,89 @@ describe Money::Bank::OandaCurrency do
         include("date_time=#{(Time.now - 86_400).strftime('%Y-%m-%d')}"))
     end
   end
+
+  describe 'private#extract_rates' do
+    let(:data) {
+      {
+        "meta": {
+          "effective_params": {
+            "data_set": "OANDA",
+            "base_currencies": [
+              "CHF",
+              "USD"
+            ],
+            "quote_currencies": [
+              "EUR",
+              "INR"
+            ],
+            "date_time": "2022-05-09T07:15:00+00:00",
+            "decimal_places": 5,
+            "fields": [
+              "averages"
+            ]
+          },
+          "endpoint": "candle",
+          "request_time": "2022-05-10T07:29:07+00:00",
+          "skipped_currency_pairs": []
+        },
+        "quotes": [
+          {
+            "base_currency": "CHF",
+            "quote_currency": "EUR",
+            "start_time": "2022-05-09T07:15:00+00:00",
+            "open_time": "2022-05-09T07:15:00+00:00",
+            "close_time": "2022-05-10T07:14:59+00:00",
+            "average_bid": "0.95441",
+            "average_ask": "0.95460",
+            "average_midpoint": "0.95450"
+          },
+          {
+            "base_currency": "CHF",
+            "quote_currency": "INR",
+            "start_time": "2022-05-09T07:15:00+00:00",
+            "open_time": "2022-05-09T07:15:00+00:00",
+            "close_time": "2022-05-10T07:14:59+00:00",
+            "average_bid": "77.76657",
+            "average_ask": "77.91848",
+            "average_midpoint": "77.84252"
+          },
+          {
+            "base_currency": "USD",
+            "quote_currency": "EUR",
+            "start_time": "2022-05-09T07:15:00+00:00",
+            "open_time": "2022-05-09T07:15:00+00:00",
+            "close_time": "2022-05-10T07:14:59+00:00",
+            "average_bid": "0.94741",
+            "average_ask": "0.94758",
+            "average_midpoint": "0.94750"
+          },
+          {
+            "base_currency": "USD",
+            "quote_currency": "INR",
+            "start_time": "2022-05-09T07:15:00+00:00",
+            "open_time": "2022-05-09T07:15:00+00:00",
+            "close_time": "2022-05-10T07:14:59+00:00",
+            "average_bid": "77.20334",
+            "average_ask": "77.33839",
+            "average_midpoint": "77.27086"
+          }
+        ]
+      }.to_json
+    }
+    context "when the rate's from_currency is not in whitelist" do
+      it 'still add the rate' do
+        @bank.send(:extract_rates, data)
+        expect(@bank.store.instance_variable_get('@index'))
+          .to include('CHF_TO_EUR')
+      end
+    end
+
+    context "when the rate's to_currency is not in whitelist" do
+      it 'should not get the rate' do
+        @bank.send(:extract_rates, data)
+        expect(@bank.store.instance_variable_get('@index'))
+          .not_to include('USD_TO_INR')
+      end
+    end
+  end
 end
